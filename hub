@@ -3,7 +3,9 @@ KHALEXIS HUB V3.1
 HUB DE SCRIPTS - PLACE ID DETECTION SYSTEM + TAB DE ATUALIZAÇÕES
 ]]
 
+
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1"))()
+
 
 local Window = OrionLib:MakeWindow({
     Name = "KHALEXIS HUB V3.1",
@@ -14,8 +16,10 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Khalexis Hub"
 })
 
+
 local IconeDigital = "rbxassetid://3944703587"
 local IconePadrao  = "rbxassetid://4483345998"
+
 
 ----------------------------------------------------
 -- 1) ABA ATUALIZAÇÕES (SEMPRE SELECIONADA)
@@ -26,17 +30,36 @@ local AtualizacoesTab = Window:MakeTab({
     PremiumOnly = false
 })
 
+
 local ChangelogText = "Carregando atualizações..."
+
 
 pcall(function()
     ChangelogText = game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/change%20log", true)
 end)
 
+
 AtualizacoesTab:AddSection({
     Name = "KHALEXIS HUB - ATUALIZAÇÕES"
 })
 
+
 AtualizacoesTab:AddParagraph("Versão 3.1", ChangelogText)
+
+
+----------------------------------------------------
+-- 1.1) ABA FAVORITOS (ABAIXO DE ATUALIZAÇÕES)
+--     (PRONTA PARA SISTEMA DE FAVORITAGEM)
+----------------------------------------------------
+local FavoritosTab = Window:MakeTab({
+    Name = "Favoritos",
+    Icon = IconePadrao,
+    PremiumOnly = false
+})
+
+FavoritosTab:AddSection({
+    Name = "Scripts Favoritos"
+})
 
 ----------------------------------------------------
 -- 2) CONFIGURAÇÃO DOS JOGOS
@@ -56,6 +79,7 @@ local JogosDisponiveis = {
                 end
             })
 
+
             Tab:AddButton({
                 Name = "SPEED HUB X",
                 Icon = IconeDigital,
@@ -64,6 +88,7 @@ local JogosDisponiveis = {
                 end
             })
 
+
             Tab:AddButton({
                 Name = "LUMIN HUB",
                 Icon = IconeDigital,
@@ -71,6 +96,7 @@ local JogosDisponiveis = {
                     loadstring(game:HttpGet("http://luminon.top/loader.lua"))()
                 end
             })
+
 
             Tab:AddButton({
                 Name = "MAX37",
@@ -101,11 +127,13 @@ local JogosDisponiveis = {
     }
 }
 
+
 ----------------------------------------------------
 -- 3) DETECÇÃO DO JOGO ATUAL
 ----------------------------------------------------
 local CurrentPlaceId = game.PlaceId
 local CurrentGameData = nil
+
 
 for i, jogo in pairs(JogosDisponiveis) do
     if jogo.PlaceId == CurrentPlaceId then
@@ -114,6 +142,7 @@ for i, jogo in pairs(JogosDisponiveis) do
         break
     end
 end
+
 
 ----------------------------------------------------
 -- 4) FUNÇÃO PRA CRIAR TABS DE JOGOS
@@ -125,12 +154,15 @@ local function CriarTabJogo(jogo, estrela)
         PremiumOnly = false
     })
 
+
     jogo.ScriptFunc(Tab)
 end
+
 
 -- Jogo atual (se existir)
 if CurrentGameData then
     CriarTabJogo(CurrentGameData, true)
+
 
     OrionLib:MakeNotification({
         Name = "Jogo Detectado!",
@@ -140,10 +172,12 @@ if CurrentGameData then
     })
 end
 
+
 -- Depois os outros jogos
 for _, jogo in pairs(JogosDisponiveis) do
     CriarTabJogo(jogo, false)
 end
+
 
 ----------------------------------------------------
 -- 5) INICIALIZA A UI
