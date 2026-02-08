@@ -1,8 +1,9 @@
 --[[
-    HUB DE SCRIPTS - PLACE ID DETECTION SYSTEM
+KHALEXIS HUB V3.1
+HUB DE SCRIPTS - PLACE ID DETECTION SYSTEM + TAB DE ATUALIZAÇÕES
 ]]
 
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1')))()
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1"))()
 
 local Window = OrionLib:MakeWindow({
     Name = "KHALEXIS HUB V3.1",
@@ -13,24 +14,46 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Khalexis Hub"
 })
 
--- ÍCONE DA DIGITAL (FINGERPRINT)
 local IconeDigital = "rbxassetid://3944703587"
+local IconePadrao  = "rbxassetid://4483345998"
 
--- TABELA DE CONFIGURAÇÃO DOS JOGOS
+----------------------------------------------------
+-- 1) ABA ATUALIZAÇÕES (SEMPRE SELECIONADA)
+----------------------------------------------------
+local AtualizacoesTab = Window:MakeTab({
+    Name = "Atualizações",
+    Icon = IconePadrao,
+    PremiumOnly = false
+})
+
+local ChangelogText = "Carregando atualizações..."
+
+pcall(function()
+    ChangelogText = game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/change%20log", true)
+end)
+
+AtualizacoesTab:AddSection({
+    Name = "KHALEXIS HUB - ATUALIZAÇÕES"
+})
+
+AtualizacoesTab:AddParagraph("Versão 3.1", ChangelogText)
+
+----------------------------------------------------
+-- 2) CONFIGURAÇÃO DOS JOGOS
+----------------------------------------------------
 local JogosDisponiveis = {
     {
         Name = "Break a Lucky Block",
         PlaceId = 124311897657957,
-        Icon = "rbxassetid://4483345998",
+        Icon = IconePadrao,
         ScriptFunc = function(Tab)
-            Tab:AddSection({ Name = "Break a Lucky Block Scripts" })
-            
+
             Tab:AddButton({
                 Name = "TORA ISME",
                 Icon = IconeDigital,
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/BreakaLuckyBlock"))()
-                end    
+                end
             })
 
             Tab:AddButton({
@@ -38,7 +61,7 @@ local JogosDisponiveis = {
                 Icon = IconeDigital,
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua", true))()
-                end    
+                end
             })
 
             Tab:AddButton({
@@ -46,75 +69,83 @@ local JogosDisponiveis = {
                 Icon = IconeDigital,
                 Callback = function()
                     loadstring(game:HttpGet("http://luminon.top/loader.lua"))()
-                end    
+                end
             })
 
             Tab:AddButton({
                 Name = "MAX37",
                 Icon = IconeDigital,
                 Callback = function()
-                    loadstring(game:HttpGet("https://gist.githubusercontent.com/ichtretekinder122/df01c6cbf8f79daf87a7416a91d1ea52/raw/lucky%20block" .. "?t=" .. tostring(math.random(1, 100000))))()
-                end    
+                    loadstring(game:HttpGet(
+                        "https://gist.githubusercontent.com/ichtretekinder122/df01c6cbf8f79daf87a7416a91d1ea52/raw/lucky%20block"
+                        .. "?t=" .. tostring(math.random(1, 100000))
+                    ))()
+                end
             })
         end
     },
     {
         Name = "Escape Tsunami for Brainrots",
         PlaceId = 131623223084840,
-        Icon = "rbxassetid://4483345998",
+        Icon = IconePadrao,
         ScriptFunc = function(Tab)
-            Tab:AddSection({ Name = "Escape Tsunami for Brainrots Scripts" })
+
             Tab:AddButton({
                 Name = "KLS HUB",
                 Icon = IconeDigital,
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/khalexishub/refs/heads/main/10k"))()
-                end    
+                end
             })
         end
     }
 }
 
--- LÓGICA DE ORDENAÇÃO AUTOMÁTICA
+----------------------------------------------------
+-- 3) DETECÇÃO DO JOGO ATUAL
+----------------------------------------------------
 local CurrentPlaceId = game.PlaceId
 local CurrentGameData = nil
 
--- 1. Verifica se estamos em um jogo suportado
 for i, jogo in pairs(JogosDisponiveis) do
     if jogo.PlaceId == CurrentPlaceId then
         CurrentGameData = jogo
-        table.remove(JogosDisponiveis, i) -- Remove da lista para não duplicar
+        table.remove(JogosDisponiveis, i)
         break
     end
 end
 
--- 2. Se achou o jogo atual, cria a aba dele PRIMEIRO (Ficará logo abaixo de Favoritos)
-if CurrentGameData then
+----------------------------------------------------
+-- 4) FUNÇÃO PRA CRIAR TABS DE JOGOS
+----------------------------------------------------
+local function CriarTabJogo(jogo, estrela)
     local Tab = Window:MakeTab({
-        Name = "⭐ " .. CurrentGameData.Name, -- Adiciona a estrela no título da aba
-        Icon = CurrentGameData.Icon,
+        Name = (estrela and "⭐ " or "") .. jogo.Name,
+        Icon = jogo.Icon,
         PremiumOnly = false
     })
-    -- Executa a função que cria os botões dentro da aba
-    CurrentGameData.ScriptFunc(Tab)
-    
+
+    jogo.ScriptFunc(Tab)
+end
+
+-- Jogo atual (se existir)
+if CurrentGameData then
+    CriarTabJogo(CurrentGameData, true)
+
     OrionLib:MakeNotification({
         Name = "Jogo Detectado!",
-        Content = "Scripts para " .. CurrentGameData.Name .. " carregados no topo.",
-        Image = "rbxassetid://4483345998",
+        Content = "Scripts para " .. CurrentGameData.Name .. " carregados.",
+        Image = IconePadrao,
         Time = 5
     })
 end
 
--- 3. Cria as abas dos outros jogos normalmente
+-- Depois os outros jogos
 for _, jogo in pairs(JogosDisponiveis) do
-    local Tab = Window:MakeTab({
-        Name = jogo.Name,
-        Icon = jogo.Icon,
-        PremiumOnly = false
-    })
-    jogo.ScriptFunc(Tab)
+    CriarTabJogo(jogo, false)
 end
 
--- Inicializa
+----------------------------------------------------
+-- 5) INICIALIZA A UI
+----------------------------------------------------
 OrionLib:Init()
