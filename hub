@@ -3,7 +3,9 @@ KHALEXIS HUB V3.1
 HUB DE SCRIPTS - PLACE ID DETECTION SYSTEM + TAB DE ATUALIZAÇÕES
 ]]
 
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1"))()
+-- AVISO: Substitua este loadstring pelo link da SUA library modificada acima, ou cole o código da library antes deste script.
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1"))() 
+-- ^^^ Se você já colou a library antes no mesmo script, remova a linha acima e use apenas 'local OrionLib = OrionLib' (assumindo que a library retorna a tabela).
 
 local Window = OrionLib:MakeWindow({
     Name = "KHALEXIS HUB V3.1",
@@ -67,7 +69,6 @@ local JogosDisponiveis = {
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/BreakaLuckyBlock"))()
                     
-                    -- Notificação adicionada
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script TORA ISME foi executado.",
@@ -83,7 +84,6 @@ local JogosDisponiveis = {
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua", true))()
                     
-                    -- Notificação adicionada
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script SPEED HUB X foi executado.",
@@ -99,7 +99,6 @@ local JogosDisponiveis = {
                 Callback = function()
                     loadstring(game:HttpGet("http://luminon.top/loader.lua"))()
                     
-                    -- Notificação adicionada
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script LUMIN HUB foi executado.",
@@ -118,7 +117,6 @@ local JogosDisponiveis = {
                         .. "?t=" .. tostring(math.random(1, 100000))
                     ))()
                     
-                    -- Notificação adicionada
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script MAX37 foi executado.",
@@ -140,7 +138,6 @@ local JogosDisponiveis = {
                 Callback = function()
                     loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/khalexishub/refs/heads/main/10k"))()
                     
-                    -- Notificação adicionada
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script KLS HUB foi executado.",
@@ -151,10 +148,9 @@ local JogosDisponiveis = {
             })
         end
     },
-    -- ADICIONADO: MURDER MYSTERY 2 EM ÚLTIMO
     {
         Name = "Murder Mystery 2",
-        PlaceId = 142823291, -- ID Oficial do MM2 para detecção automática
+        PlaceId = 142823291, 
         Icon = IconePadrao,
         ScriptFunc = function(Tab)
             
@@ -164,7 +160,6 @@ local JogosDisponiveis = {
                 Callback = function()
                     loadstring(game:HttpGet("https://e-vil.com/anbu/mm2main.lua"))()
                     
-                    -- Notificação modelo
                     OrionLib:MakeNotification({
                         Name = "Notificação Khalexis Hub",
                         Content = "O script ANBU foi executado.",
@@ -205,7 +200,7 @@ local function CriarTabJogo(jogo, estrela)
     jogo.ScriptFunc(Tab)
 end
 
--- Jogo atual (se existir)
+-- Lógica Modificada para detecção de Jogo
 if CurrentGameData then
     CriarTabJogo(CurrentGameData, true)
 
@@ -215,9 +210,17 @@ if CurrentGameData then
         Image = IconePadrao,
         Time = 5
     })
+else
+    -- Se nenhum jogo foi detectado na lista
+    OrionLib:MakeNotification({
+        Name = "Khalexis Hub",
+        Content = "Infelizmente não temos scripts para esse jogo.",
+        Image = IconePadrao,
+        Time = 5
+    })
 end
 
--- Depois os outros jogos
+-- Carrega o resto das abas dos outros jogos
 for _, jogo in pairs(JogosDisponiveis) do
     CriarTabJogo(jogo, false)
 end
