@@ -1,1 +1,1559 @@
+--[[ 
+    SISTEMA DE KEY - KHALEXIS HUB
+    INTEGRAÇÃO COMPLETA COM DEBUG
+]]
 
+local Junkie = loadstring(game:HttpGet("https://jnkie.com/sdk/library.lua"))()
+Junkie.service = "Khalexis Hub - Key"
+Junkie.identifier = "1003768"
+Junkie.provider = "Khalexis Hub - Key"
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
+
+local Icons = {
+    Shield = "rbxassetid://105619007041452",
+    Loading = "rbxassetid://116535712789945",
+    Lock = "rbxassetid://114355063515473",
+    Key = "rbxassetid://93569468678423",
+    Check = "rbxassetid://119783053916823",
+    CheckCircle = "rbxassetid://10709790644",
+    XCircle = "rbxassetid://10747384394",
+    Warning = "rbxassetid://130226573962640",
+    Globe = "rbxassetid://10734950309",
+    Info = "rbxassetid://94529541997278",
+    ExternalLink = "rbxassetid://71038734318580",
+    Copy = "rbxassetid://107485544510830",
+    Spinner = "rbxassetid://10709767827",
+    Database = "rbxassetid://114209748010261",
+    Sparkles = "rbxassetid://10709767827",
+    ErrorFolder = "rbxassetid://113312905787220",
+    Candy = "rbxassetid://10709767827",
+    JunkieNewIcon = "rbxassetid://131774582967880"
+}
+
+-- DEBUG
+local function printTable(t, indent)
+    indent = indent or ""
+    for k, v in pairs(t) do
+        if type(v) == "table" then
+            print(indent .. tostring(k) .. ":")
+            printTable(v, indent .. "  ")
+        else
+            print(indent .. tostring(k) .. " = " .. tostring(v))
+        end
+    end
+end
+
+-- FILESYSTEM
+local function hasFileSystemSupport()
+    local hasWritefile = pcall(function() return type(writefile) == "function" end)
+    local hasReadfile = pcall(function() return type(readfile) == "function" end)
+    local hasIsfile = pcall(function() return type(isfile) == "function" end)
+    return hasWritefile and hasReadfile and hasIsfile
+end
+
+local fileSystemSupported = hasFileSystemSupport()
+
+local function saveVerifiedKey(key)
+    if not fileSystemSupported then return false end
+    local ok = pcall(function()
+        writefile("verified_key.txt", key)
+    end)
+    return ok
+end
+
+local function loadVerifiedKey()
+    if not fileSystemSupported then 
+        return nil 
+    end
+    
+    local ok, content = pcall(function()
+        return readfile("verified_key.txt")
+    end)
+    
+    if not ok or not content then 
+        return nil 
+    end
+    return content
+end
+
+local function clearSavedKey()
+    if not fileSystemSupported then return false end
+    local ok = pcall(function() delfile("verified_key.txt") end)
+    return ok
+end
+
+-- CONFIG VISUAL
+local Configuration = {
+    ScreenGuiName = "JunkieKeySystem",
+    Window = {Size = UDim2.new(0, 300, 0, 260)},
+    Colors = {
+        Bg = Color3.fromRGB(12, 12, 12),
+        Primary = Color3.fromRGB(59, 130, 246),
+        PrimaryDark = Color3.fromRGB(37, 99, 235),
+        StatusIdle = Color3.fromRGB(249, 115, 22),
+        StatusSuccess = Color3.fromRGB(16, 185, 129),
+        StatusError = Color3.fromRGB(239, 68, 68),
+        StatusVerifying = Color3.fromRGB(59, 130, 246),
+        StatusWarning = Color3.fromRGB(254, 188, 46),
+        TextMain = Color3.fromRGB(255, 255, 255),
+        TextSec = Color3.fromRGB(161, 161, 170),
+        TextMuted = Color3.fromRGB(113, 113, 122),
+        Border = Color3.fromRGB(255, 255, 255),
+        TrafficRed = Color3.fromRGB(255, 95, 87),
+        TrafficYellow = Color3.fromRGB(254, 188, 46),
+        TrafficGreen = Color3.fromRGB(40, 200, 64),
+        Success = Color3.fromRGB(50, 205, 110),
+        Error = Color3.fromRGB(245, 70, 90),
+        Warning = Color3.fromRGB(255, 200, 50),
+        PremiumGold = Color3.fromRGB(255, 170, 0)
+    },
+    BorderTransparency = 0.15,
+    Animations = {
+        VeryFast = 0.1,
+        Fast = 0.2,
+        Medium = 0.3,
+        Slow = 0.4,
+        VerySlow = 0.5,
+        Bounce = 0.5
+    },
+    Fonts = {
+        Title = 18,
+        Subtitle = 11,
+        Button = 12,
+        Input = 13,
+        Body = 12,
+        Small = 10,
+        Tiny = 10
+    }
+}
+
+-- UTILS
+local Utils = {}
+
+Utils.Tween = function(obj, props, time, style, dir)
+    local t =
+        TweenService:Create(
+        obj,
+        TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out),
+        props
+    )
+    t:Play()
+    return t
+end
+
+Utils.CreateCorner = function(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 10)
+    corner.Parent = parent
+    return corner
+end
+
+Utils.Round = function(obj, radius)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius or 10)
+    c.Parent = obj
+    return c
+end
+
+Utils.TweenBack = function(instance, properties, duration)
+    return Utils.Tween(instance, properties, duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+
+Utils.CreateStroke = function(parent, color, thickness, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Configuration.Colors.Border
+    stroke.Thickness = thickness or 1
+    stroke.Transparency = transparency or 0.77
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = parent
+    return stroke
+end
+
+Utils.Stroke = function(obj, color, thick, trans)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.new(1, 1, 1)
+    s.Thickness = thick or 1
+    s.Transparency = trans or 0.9
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = obj
+    return s
+end
+
+Utils.CreateGradient = function(parent, color1, color2, rotation)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color =
+        ColorSequence.new(
+        {
+            ColorSequenceKeypoint.new(0, color1),
+            ColorSequenceKeypoint.new(1, color2)
+        }
+    )
+    gradient.Rotation = rotation or 300
+    gradient.Parent = parent
+    return gradient
+end
+
+local function SetBlur(enabled)
+    local blur = Lighting:FindFirstChild("JunkieBlur")
+    if enabled then
+        if not blur then
+            blur = Instance.new("BlurEffect")
+            blur.Name = "JunkieBlur"
+            blur.Size = 0
+            blur.Parent = Lighting
+        end
+        Utils.Tween(blur, {Size = 18}, Configuration.Animations.Bounce)
+    elseif blur then
+        Utils.Tween(blur, {Size = 0}, Configuration.Animations.Medium)
+        task.delay(
+            0.3,
+            function()
+                blur:Destroy()
+            end
+        )
+    end
+end
+
+-- TOAST SYSTEM (SÓ DA KEY SYSTEM)
+local ToastSystem = {ActiveToasts = {}, MaxToasts = 3, ToastSpacing = 6}
+
+ToastSystem.Create = function(parent, message, toastType, duration, statusCode)
+    local colors = {
+        success = Configuration.Colors.Success,
+        error = Configuration.Colors.Error,
+        warning = Configuration.Colors.Warning,
+        info = Configuration.Colors.Primary
+    }
+    local icons = {
+        success = Icons.CheckCircle,
+        error = Icons.ErrorFolder,
+        warning = Icons.Warning,
+        info = Icons.Info
+    }
+    local toastColor = colors[toastType] or colors.Bg
+    local toastIcon = icons[toastType] or nil
+
+    if #ToastSystem.ActiveToasts >= ToastSystem.MaxToasts then
+        local oldest = table.remove(ToastSystem.ActiveToasts, 1)
+        if oldest and oldest.Parent then
+            oldest:Destroy()
+        end
+    end
+
+    local toastHeight = 46
+    local toast = Instance.new("Frame")
+    toast.Name = tostring(tick())
+    toast.Size = UDim2.new(0, 0, 0, toastHeight)
+    toast.Position = UDim2.new(0.5, 0, 0, 4)
+    toast.AnchorPoint = Vector2.new(0.5, 0)
+    toast.BackgroundColor3 = Configuration.Colors.Bg
+    toast.BackgroundTransparency = 0.5
+    toast.BorderSizePixel = 0
+    toast.ZIndex = 300
+    toast.ClipsDescendants = true
+    toast.Parent = parent
+
+    Utils.Round(toast, 10)
+    Utils.CreateStroke(toast, toastColor, 1, 0.1)
+    Utils.CreateGradient(toast, Configuration.Colors.Bg, Configuration.Colors.Bg, 1)
+
+    local iconBg = Instance.new("Frame")
+    iconBg.Name = "IconBg"
+    iconBg.Size = UDim2.new(0, 30, 0, 30)
+    iconBg.Position = UDim2.new(0, 10, 0.5, 0)
+    iconBg.AnchorPoint = Vector2.new(0, 0.5)
+    iconBg.BackgroundColor3 = toastColor
+    iconBg.BackgroundTransparency = 0.85
+    iconBg.BorderSizePixel = 0
+    iconBg.ZIndex = 301
+    iconBg.Parent = toast
+    Utils.Round(iconBg, 15)
+
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 18, 0, 18)
+    icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    icon.BackgroundTransparency = 1
+    icon.Image = toastIcon
+    icon.ImageColor3 = toastColor
+    icon.ZIndex = 302
+    icon.Parent = iconBg
+
+    local textContainer = Instance.new("Frame")
+    textContainer.Name = "TextContainer"
+    textContainer.Size = UDim2.new(1, statusCode and -96 or -56, 1, 0)
+    textContainer.Position = UDim2.new(0, 48, 0, 0)
+    textContainer.BackgroundTransparency = 1
+    textContainer.ZIndex = 301
+    textContainer.Parent = toast
+
+    local text = Instance.new("TextLabel")
+    text.Name = "Message"
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = message or ""
+    text.TextColor3 = Configuration.Colors.TextMain
+    text.TextSize = Configuration.Fonts.Body
+    text.Font = Enum.Font.GothamMedium
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.TextYAlignment = Enum.TextYAlignment.Center
+    text.TextWrapped = true
+    text.ZIndex = 301
+    text.Parent = textContainer
+
+    if statusCode then
+        local statusBadge = Instance.new("Frame")
+        statusBadge.Name = "StatusBadge"
+        statusBadge.Size = UDim2.new(0, 40, 0, 24)
+        statusBadge.Position = UDim2.new(1, -8, 0.5, 0)
+        statusBadge.AnchorPoint = Vector2.new(1, 0.5)
+        statusBadge.BackgroundColor3 = toastColor
+        statusBadge.BackgroundTransparency = 0.8
+        statusBadge.BorderSizePixel = 0
+        statusBadge.ZIndex = 301
+        statusBadge.Parent = toast
+        Utils.Round(statusBadge, 8)
+        Utils.CreateStroke(statusBadge, toastColor, 1, Configuration.BorderTransparency)
+
+        local statusCodeLabel = Instance.new("TextLabel")
+        statusCodeLabel.Name = "StatusCode"
+        statusCodeLabel.Size = UDim2.new(1, 0, 1, 0)
+        statusCodeLabel.BackgroundTransparency = 1
+        statusCodeLabel.Text = tostring(statusCode)
+        statusCodeLabel.TextColor3 = toastColor
+        statusCodeLabel.TextSize = Configuration.Fonts.Small
+        statusCodeLabel.Font = Enum.Font.GothamBold
+        statusCodeLabel.ZIndex = 302
+        statusCodeLabel.Parent = statusBadge
+    end
+
+    table.insert(ToastSystem.ActiveToasts, toast)
+    ToastSystem.RepositionToasts()
+
+    local targetWidth = 260
+    Utils.TweenBack(toast, {Size = UDim2.new(0, targetWidth, 0, toastHeight)}, Configuration.Animations.Medium)
+
+    task.delay(
+        duration or 3,
+        function()
+            if toast.Parent then
+                Utils.Tween(
+                    toast,
+                    {
+                        Position = UDim2.new(0.5, 0, 0, -70),
+                        BackgroundTransparency = 1
+                    },
+                    Configuration.Animations.Medium
+                )
+
+                for i, t in ipairs(ToastSystem.ActiveToasts) do
+                    if t == toast then
+                        table.remove(ToastSystem.ActiveToasts, i)
+                        break
+                    end
+                end
+
+                task.wait(Configuration.Animations.Medium)
+                toast:Destroy()
+                ToastSystem.RepositionToasts()
+            end
+        end
+    )
+
+    return toast
+end
+
+ToastSystem.RepositionToasts = function()
+    for i, toast in ipairs(ToastSystem.ActiveToasts) do
+        local targetY = 4 + ((i - 1) * (toast.Size.Y.Offset + ToastSystem.ToastSpacing))
+        Utils.Tween(toast, {Position = UDim2.new(0.5, 0, 0, targetY)}, Configuration.Animations.Medium)
+    end
+end
+
+-- BUILD UI
+local function Build()
+    local parent = game:GetService("CoreGui")
+    local old = parent:FindFirstChild(Configuration.ScreenGuiName)
+    if old then
+        old:Destroy()
+    end
+
+    local screen = Instance.new("ScreenGui")
+    screen.Name = Configuration.ScreenGuiName
+    screen.ResetOnSpawn = false
+    screen.Parent = parent
+
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+    overlay.BackgroundTransparency = 1
+    overlay.Parent = screen
+
+    SetBlur(true)
+
+    local main = Instance.new("Frame")
+    main.Size = Configuration.Window.Size
+    main.Position = UDim2.new(0.5, 0, 0.45, 0)
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.BackgroundColor3 = Configuration.Colors.Bg
+    main.BackgroundTransparency = 0.2
+    main.ClipsDescendants = true
+    main.Parent = screen
+    Utils.Round(main, 14)
+    Utils.Stroke(main, Color3.new(1, 1, 1), 1, 0.92)
+
+    local glass = Instance.new("Frame")
+    glass.Size = UDim2.fromScale(1, 1)
+    glass.BackgroundColor3 = Color3.new(1, 1, 1)
+    glass.BackgroundTransparency = 0.985
+    glass.ZIndex = 0
+    glass.Parent = main
+    Utils.Round(glass, 14)
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, 0, 0, 32)
+    bar.BackgroundTransparency = 1
+    bar.Parent = main
+
+    local dots = Instance.new("Frame")
+    dots.Size = UDim2.new(0, 40, 0, 10)
+    dots.Position = UDim2.new(0, 12, 0.5, 0)
+    dots.AnchorPoint = Vector2.new(0, 0.5)
+    dots.BackgroundTransparency = 1
+    dots.Parent = bar
+
+    local dColors = {
+        Configuration.Colors.TrafficRed,
+        Configuration.Colors.TrafficYellow,
+        Configuration.Colors.TrafficGreen
+    }
+    for i, c in ipairs(dColors) do
+        local d = Instance.new("Frame")
+        d.Size = UDim2.fromOffset(8, 8)
+        d.Position = UDim2.fromOffset((i - 1) * 14, 1)
+        d.BackgroundColor3 = c
+        d.BorderSizePixel = 0
+        d.Parent = dots
+        Utils.Round(d, 4)
+    end
+
+    local titleText = Instance.new("TextLabel")
+    titleText.Size = UDim2.new(1, 0, 1, 0)
+    titleText.Text = "Khalexis Team"
+    titleText.TextColor3 = Color3.new(1, 1, 1)
+    titleText.TextTransparency = 0.7
+    titleText.TextSize = 10
+    titleText.Font = Enum.Font.GothamBold
+    titleText.BackgroundTransparency = 1
+    titleText.Parent = bar
+
+    local content = Instance.new("ScrollingFrame")
+    content.Size = UDim2.new(1, 0, 1, -32)
+    content.Position = UDim2.new(0, 0, 0, 32)
+    content.BackgroundTransparency = 1
+    content.ScrollBarThickness = 8
+    content.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+    content.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
+    content.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+    content.ScrollBarImageTransparency = 0
+    content.CanvasSize = UDim2.new(0, 0, 0, 360)
+    content.Parent = main
+
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 10)
+    list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    list.Parent = content
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 4)
+    pad.Parent = content
+
+    local logoContainer = Instance.new("Frame")
+    logoContainer.Size = UDim2.fromOffset(52, 52)
+    logoContainer.BackgroundColor3 = Configuration.Colors.Primary
+    logoContainer.Parent = content
+    Utils.Round(logoContainer, 14)
+
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new(Configuration.Colors.Primary, Configuration.Colors.PrimaryDark)
+    grad.Rotation = 45
+    grad.Parent = logoContainer
+
+    local sIcon = Instance.new("ImageLabel")
+    sIcon.Size = UDim2.fromScale(1, 1)
+    sIcon.Position = UDim2.fromScale(0.5, 0.5)
+    sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    sIcon.Image = Icons.JunkieNewIcon
+    sIcon.ScaleType = Enum.ScaleType.Fit
+    sIcon.BackgroundTransparency = 1
+    sIcon.Parent = logoContainer
+
+    local titleArea = Instance.new("Frame")
+    titleArea.Size = UDim2.new(1, -24, 0, 32)
+    titleArea.BackgroundTransparency = 1
+    titleArea.Parent = content
+
+    local mainTitle = Instance.new("TextLabel")
+    mainTitle.Size = UDim2.new(1, 0, 0, 18)
+    mainTitle.Text = "Khalexis Hub - Key"
+    mainTitle.TextColor3 = Color3.new(1, 1, 1)
+    mainTitle.TextSize = Configuration.Fonts.Title
+    mainTitle.Font = Enum.Font.GothamBold
+    mainTitle.BackgroundTransparency = 1
+    mainTitle.Parent = titleArea
+
+    local subTitle = Instance.new("TextLabel")
+    subTitle.Size = UDim2.new(1, 0, 0, 12)
+    subTitle.Position = UDim2.fromOffset(0, 18)
+    subTitle.Text = "Sistema de Key ( role para baixo )"
+    subTitle.TextColor3 = Configuration.Colors.TextSec
+    subTitle.TextSize = Configuration.Fonts.Subtitle
+    subTitle.Font = Enum.Font.Gotham
+    subTitle.BackgroundTransparency = 1
+    subTitle.Parent = titleArea
+
+    local statusCard = Instance.new("Frame")
+    statusCard.Size = UDim2.new(0, 260, 0, 54)
+    statusCard.BackgroundColor3 = Color3.new(1, 1, 1)
+    statusCard.BackgroundTransparency = 0.96
+    statusCard.Parent = content
+    Utils.Round(statusCard, 12)
+
+    local sStroke = Utils.Stroke(statusCard, Color3.new(1, 1, 1), 1, 0.95)
+
+    local sIconBg = Instance.new("Frame")
+    sIconBg.Size = UDim2.fromOffset(34, 34)
+    sIconBg.Position = UDim2.new(0, 12, 0.5, 0)
+    sIconBg.AnchorPoint = Vector2.new(0, 0.5)
+    sIconBg.BackgroundColor3 = Configuration.Colors.StatusIdle
+    sIconBg.BackgroundTransparency = 0.9
+    sIconBg.Parent = statusCard
+    Utils.Round(sIconBg, 17)
+
+    local sImg = Instance.new("ImageLabel")
+    sImg.Size = UDim2.fromScale(0.5, 0.5)
+    sImg.Position = UDim2.fromScale(0.5, 0.5)
+    sImg.AnchorPoint = Vector2.new(0.5, 0.5)
+    sImg.Image = Icons.Lock
+    sImg.ImageColor3 = Configuration.Colors.StatusIdle
+    sImg.BackgroundTransparency = 1
+    sImg.Parent = sIconBg
+
+    local sLabel = Instance.new("TextLabel")
+    sLabel.Size = UDim2.new(1, -64, 0, 12)
+    sLabel.Position = UDim2.fromOffset(60, 12)
+    sLabel.Text = "STATUS DA KEY"
+    sLabel.TextColor3 = Configuration.Colors.TextMuted
+    sLabel.TextSize = Configuration.Fonts.Small
+    sLabel.Font = Enum.Font.GothamBold
+    sLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sLabel.BackgroundTransparency = 1
+    sLabel.Parent = statusCard
+
+    local sValue = Instance.new("TextLabel")
+    sValue.Size = UDim2.new(1, -64, 0, 18)
+    sValue.Position = UDim2.fromOffset(60, 26)
+    sValue.Text = "Sem key detectada."
+    sValue.TextColor3 = Configuration.Colors.StatusIdle
+    sValue.TextSize = Configuration.Fonts.Body
+    sValue.Font = Enum.Font.GothamMedium
+    sValue.TextXAlignment = Enum.TextXAlignment.Left
+    sValue.BackgroundTransparency = 1
+    sValue.Parent = statusCard
+
+    local inputFrame = Instance.new("Frame")
+    inputFrame.Size = UDim2.new(0, 260, 0, 40)
+    inputFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+    inputFrame.BackgroundTransparency = 0.975
+    inputFrame.Parent = content
+    Utils.Round(inputFrame, 10)
+
+    local iStroke = Utils.Stroke(inputFrame, Color3.new(1, 1, 1), 1, 0.95)
+
+    local kIcon = Instance.new("ImageLabel")
+    kIcon.Size = UDim2.fromOffset(16, 16)
+    kIcon.Position = UDim2.new(0, 12, 0.5, 0)
+    kIcon.AnchorPoint = Vector2.new(0, 0.5)
+    kIcon.Image = Icons.Key
+    kIcon.ImageColor3 = Configuration.Colors.TextMuted
+    kIcon.BackgroundTransparency = 1
+    kIcon.Parent = inputFrame
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -70, 1, 0)
+    box.Position = UDim2.fromOffset(38, 0)
+    box.Text = ""
+    box.PlaceholderText = "Cole sua key aqui..."
+    box.TextColor3 = Color3.new(1, 1, 1)
+    box.TextSize = Configuration.Fonts.Input
+    box.Font = Enum.Font.Gotham
+    box.BackgroundTransparency = 1
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    box.Parent = inputFrame
+
+    local paste = Instance.new("ImageButton")
+    paste.Size = UDim2.fromOffset(16, 16)
+    paste.Position = UDim2.new(1, -10, 0.5, 0)
+    paste.AnchorPoint = Vector2.new(1, 0.5)
+    paste.Image = Icons.Copy
+    paste.ImageColor3 = Configuration.Colors.TextMuted
+    paste.BackgroundTransparency = 1
+    paste.Parent = inputFrame
+
+    local btnRow = Instance.new("Frame")
+    btnRow.Size = UDim2.new(0, 260, 0, 100)
+    btnRow.BackgroundTransparency = 1
+    btnRow.Parent = content
+
+    local btnList = Instance.new("UIListLayout")
+    btnList.Parent = btnRow
+    btnList.SortOrder = Enum.SortOrder.LayoutOrder
+    btnList.Padding = UDim.new(0, 6)
+    btnList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local redeem = Instance.new("TextButton")
+    redeem.Size = UDim2.new(1, 0, 0, 30)
+    redeem.BackgroundColor3 = Configuration.Colors.Primary
+    redeem.Text = "Verificar Key"
+    redeem.TextColor3 = Color3.new(1, 1, 1)
+    redeem.Font = Enum.Font.GothamBold
+    redeem.TextSize = Configuration.Fonts.Button
+    redeem.AutoButtonColor = false
+    redeem.LayoutOrder = 1
+    redeem.Parent = btnRow
+    Utils.Round(redeem, 10)
+
+    local buyPremium = Instance.new("TextButton")
+    buyPremium.Size = UDim2.new(1, 0, 0, 30)
+    buyPremium.BackgroundColor3 = Configuration.Colors.PremiumGold
+    buyPremium.Text = "Comprar Key Premium"
+    buyPremium.TextColor3 = Color3.new(1, 1, 1)
+    buyPremium.Font = Enum.Font.GothamBold
+    buyPremium.TextSize = Configuration.Fonts.Button
+    buyPremium.AutoButtonColor = false
+    buyPremium.LayoutOrder = 2
+    buyPremium.Parent = btnRow
+    Utils.Round(buyPremium, 10)
+    Utils.Stroke(buyPremium, Color3.new(1,1,1), 1, 0.9)
+
+    local getKey = Instance.new("TextButton")
+    getKey.Size = UDim2.new(1, 0, 0, 30)
+    getKey.BackgroundColor3 = Color3.new(1, 1, 1)
+    getKey.BackgroundTransparency = 0.955
+    getKey.Text = "Pegar Key Grátis"
+    getKey.TextColor3 = Color3.new(1, 1, 1)
+    getKey.Font = Enum.Font.GothamBold
+    getKey.TextSize = Configuration.Fonts.Button
+    getKey.AutoButtonColor = false
+    getKey.LayoutOrder = 3
+    getKey.Parent = btnRow
+    Utils.Round(getKey, 10)
+    Utils.Stroke(getKey, Color3.new(1, 1, 1), 1, 0.94)
+
+    local function ApplyHover(btn)
+        local baseColor = btn.BackgroundColor3
+        btn.MouseEnter:Connect(function()
+            Utils.Tween(
+                btn,
+                {
+                    BackgroundColor3 = baseColor:Lerp(Color3.new(1, 1, 1), 0.08)
+                },
+                0.2
+            )
+        end)
+        btn.MouseLeave:Connect(function()
+            Utils.Tween(btn, {BackgroundColor3 = baseColor}, 0.2)
+        end)
+    end
+
+    ApplyHover(redeem)
+    ApplyHover(buyPremium)
+    ApplyHover(getKey)
+
+    box.Focused:Connect(function()
+        Utils.Tween(iStroke, {Transparency = 0.5, Thickness = 1.2}, 0.25)
+    end)
+    box.FocusLost:Connect(function()
+        Utils.Tween(iStroke, {Transparency = 0.95, Thickness = 1}, 0.25)
+    end)
+
+    local spinConnection
+    local dotsThread
+
+    local function SetStatus(state)
+        if spinConnection then
+            spinConnection:Disconnect()
+            spinConnection = nil
+            sImg.Rotation = 0
+        end
+        if dotsThread then
+            task.cancel(dotsThread)
+            dotsThread = nil
+        end
+
+        local color = Configuration.Colors.StatusIdle
+        local icon = Icons.Lock
+        local text = "Sem key detectada."
+
+        if state == "Verificando" then
+            color = Configuration.Colors.StatusVerifying
+            icon = Icons.Loading
+            text = "Verificando Acesso"
+
+            spinConnection = RunService.Heartbeat:Connect(function(dt)
+                if not sImg or not sImg.Parent then
+                    if spinConnection then
+                        spinConnection:Disconnect()
+                    end
+                    spinConnection = nil
+                    return
+                end
+                sImg.Rotation = (sImg.Rotation + dt * 360) % 360
+            end)
+
+            local dotsArr = {".", "..", "...", ""}
+            local i = 1
+            dotsThread = task.spawn(function()
+                while sValue and sValue.Parent do
+                    if not sValue.Text:find("Verificando Acesso", 1, true) then
+                        break
+                    end
+                    sValue.Text = text .. dotsArr[i]
+                    i = (i % #dotsArr) + 1
+                    task.wait(0.4)
+                end
+            end)
+
+        elseif state == "Sucesso" then
+            color = Configuration.Colors.StatusSuccess
+            icon = Icons.CheckCircle
+            text = "Acesso liberado"
+
+        elseif state == "Erro" then
+            color = Configuration.Colors.StatusError
+            icon = Icons.XCircle
+            text = "Key Inválida"
+        end
+
+        Utils.Tween(sValue, {TextColor3 = color}, 0.3)
+        Utils.Tween(sImg, {ImageColor3 = color}, 0.3)
+        Utils.Tween(sIconBg, {BackgroundColor3 = color}, 0.3)
+        sValue.Text = text
+        sImg.Image = icon
+    end
+
+    redeem.MouseButton1Click:Connect(function()
+        local key = box.Text:gsub("%s+", "")
+        if key == "" then return end
+
+        SetStatus("Verificando")
+        redeem.Text = "..."
+        redeem.Active = false
+
+        local result = Junkie.check_key(key)
+
+        redeem.Active = true
+        redeem.Text = "Verificar Key"
+
+        if not result then
+            SetStatus("Erro")
+            ToastSystem.Create(screen, "API request failed", "error")
+            return
+        end
+
+        if result.valid then
+            saveVerifiedKey(key)
+            getgenv().SCRIPT_KEY = key
+
+            if result.expires_at then
+                getgenv().JD_EXPIRES_AT = tonumber(result.expires_at)
+            elseif result.expiry then
+                getgenv().JD_EXPIRES_AT = tonumber(result.expiry)
+            elseif result.expire_at then
+                getgenv().JD_EXPIRES_AT = tonumber(result.expire_at)
+            elseif result.expiresAt then
+                getgenv().JD_EXPIRES_AT = tonumber(result.expiresAt)
+            else
+                getgenv().JD_EXPIRES_AT = nil
+            end
+
+            SetStatus("Sucesso")
+            ToastSystem.Create(screen, "Acesso liberado", "success")
+
+            task.wait(0.6)
+            SetBlur(false)
+            Utils.Tween(
+                main,
+                {
+                    Position = UDim2.new(0.5, 0, 0.45, 80),
+                    BackgroundTransparency = 1
+                },
+                0.5,
+                Enum.EasingStyle.Exponential,
+                Enum.EasingDirection.In
+            )
+            task.delay(
+                0.5,
+                function()
+                    screen:Destroy()
+                end
+            )
+        else
+            SetStatus("Erro")
+            ToastSystem.Create(screen, result.message or "Key inválida", "error")
+        end
+    end)
+
+    buyPremium.MouseButton1Click:Connect(function()
+        setclipboard("https://discord.gg/uv7njazH8b")
+        ToastSystem.Create(screen, "Link Premium copiado! Cole no Discord.", "success")
+    end)
+
+    getKey.MouseButton1Click:Connect(function()
+        setclipboard("https://discord.gg/VzBKS3U4JA")
+        ToastSystem.Create(screen, "Link Free copiado! Cole no navegador.", "success")
+    end)
+
+    paste.MouseButton1Click:Connect(function()
+        ToastSystem.Create(
+            screen,
+            "A funcionalidade de colar não é suportada no Roblox (por motivos de segurança).",
+            "warning"
+        )
+    end)
+
+    main.Position = UDim2.new(0.5, 0, 0.45, 80)
+    main.BackgroundTransparency = 1
+    Utils.Tween(
+        main,
+        {
+            Position = UDim2.new(0.5, 0, 0.45, 0),
+            BackgroundTransparency = 0.2
+        },
+        0.7,
+        Enum.EasingStyle.Exponential
+    )
+
+    local dragging, dragStart, startPos
+    bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            main.Position =
+                UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    return screen
+end
+
+-- CHECAGEM INICIAL
+local savedKey = loadVerifiedKey()
+local keyToCheck = savedKey
+if not keyToCheck then
+    keyToCheck = getgenv().SCRIPT_KEY
+end
+
+if keyToCheck then
+    local result = Junkie.check_key(keyToCheck)
+    
+    if result and result.valid then
+        if not savedKey and keyToCheck then
+            saveVerifiedKey(keyToCheck)
+        end
+        getgenv().SCRIPT_KEY = keyToCheck
+
+        if result.expires_at then
+            getgenv().JD_EXPIRES_AT = tonumber(result.expires_at)
+        elseif result.expiry then
+            getgenv().JD_EXPIRES_AT = tonumber(result.expiry)
+        elseif result.expire_at then
+            getgenv().JD_EXPIRES_AT = tonumber(result.expire_at)
+        elseif result.expiresAt then
+            getgenv().JD_EXPIRES_AT = tonumber(result.expiresAt)
+        else
+            getgenv().JD_EXPIRES_AT = nil
+        end
+    else
+        Build()
+    end
+else
+    Build()
+end
+
+while not getgenv().SCRIPT_KEY do
+    task.wait(0.2)
+end
+
+-- ====================================================
+-- INÍCIO DO HUB APÓS VALIDAÇÃO
+-- ====================================================
+
+-- Aqui adicionamos a lógica para buscar a expiração da key
+-- já que o script passou pela validação acima.
+task.spawn(function()
+    local key = SCRIPT_KEY
+    if key then
+        -- Usamos o Junkie novamente para pegar os detalhes, agora que estamos seguros no hub
+        local result = Junkie.check_key(key)
+        if result then
+            if result.expires_at then
+                JD_EXPIRES_AT = tonumber(result.expires_at)
+            elseif result.expiry then
+                JD_EXPIRES_AT = tonumber(result.expiry)
+            elseif result.expire_at then
+                JD_EXPIRES_AT = tonumber(result.expire_at)
+            elseif result.expiresAt then
+                JD_EXPIRES_AT = tonumber(result.expiresAt)
+            else
+                JD_EXPIRES_AT = nil
+            end
+        end
+    end
+end)
+
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/trse1"))() 
+
+local Window = OrionLib:MakeWindow({
+    Name = "KHALEXIS HUB V3.1",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "OrionHubConfig",
+    IntroEnabled = true,
+    IntroText = "Khalexis Hub"
+})
+
+local IconeDigital = "rbxassetid://3944703587"
+local IconePadrao  = "rbxassetid://4483345998"
+
+----------------------------------------------------
+-- 1) ABA ATUALIZAÇÕES
+----------------------------------------------------
+local AtualizacoesTab = Window:MakeTab({
+    Name = "Atualizações",
+    Icon = IconePadrao,
+    PremiumOnly = false
+})
+
+-- ====================================================
+-- SEÇÃO DE STATUS DA KEY (ORION + JD_EXPIRES_AT)
+-- ====================================================
+AtualizacoesTab:AddSection({
+    Name = "Status da Licença"
+})
+
+local function FormatTime(seconds)
+    if seconds <= 0 then return "Expirada" end
+    local days = math.floor(seconds / 86400)
+    local hours = math.floor((seconds % 86400) / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    return string.format("%d Dias, %02d Horas, %02d Minutos, %02d Segundos", days, hours, minutes, secs)
+end
+
+local KeyStatusParagraph = AtualizacoesTab:AddParagraph(
+    "Tempo Restante da Key",
+    "Verificando..."
+)
+
+task.spawn(function()
+    task.wait(2) -- aguarda para garantir que JD_EXPIRES_AT foi definido pela spawn anterior
+    
+    while true do
+        local expiresAt = JD_EXPIRES_AT
+
+        if expiresAt ~= nil then
+            local remaining = expiresAt - os.time()
+
+            if remaining > 0 then
+                KeyStatusParagraph:Set(FormatTime(remaining))
+            else
+                KeyStatusParagraph:Set("Sua key expirou.")
+            end
+        else
+            KeyStatusParagraph:Set("Aguardando dados de expiração...")
+        end
+
+        task.wait(1)
+    end
+end)
+
+-- ====================================================
+-- CHANGELOG
+-- ====================================================
+local ChangelogText = "Carregando atualizações..."
+
+pcall(function()
+    ChangelogText = game:HttpGet("https://raw.githubusercontent.com/okhalexis/source/refs/heads/main/change%20log", true)
+end)
+
+AtualizacoesTab:AddSection({
+    Name = "KHALEXIS HUB - ATUALIZAÇÕES"
+})
+
+AtualizacoesTab:AddParagraph("Versão 3.1", ChangelogText)
+
+-- ====================================================
+-- NOTA IMPORTANTE
+-- ====================================================
+local NotaImportanteTexto = table.concat({
+    "------------------------------",
+    "PORTUGUÊS",
+    "------------------------------",
+    "TODOS OS SCRIPTS QUE COLOCAMOS NO KHALEXIS HUB NÃO SÃO DE PROPRIEDADE NOSSA!",
+    "DIREITOS AUTORAIS RESERVADOS A SEUS CRIADORES!",
+    "OS CRÉDITOS SÃO PARA ELES, NÃO PARA O KHALEXIS TEAM!",
+    "",
+    "------------------------------",
+    "ENGLISH",
+    "------------------------------",
+    "ALL SCRIPTS POSTED ON KHALEXIS HUB ARE NOT OUR OWN PROPERTY!",
+    "COPYRIGHT RESERVED TO THEIR CREATORS!",
+    "CREDIT BELONGS TO THEM, NOT TO THE KHALEXIS TEAM!"
+}, "\n")
+
+AtualizacoesTab:AddParagraph("NOTA IMPORTANTE | IMPORTANT NOTE", NotaImportanteTexto)
+
+----------------------------------------------------
+-- 1.1) ABA FAVORITOS
+----------------------------------------------------
+local FavoritosTab = Window:MakeTab({
+    Name = "Favoritos",
+    Icon = IconePadrao,
+    PremiumOnly = false
+})
+
+FavoritosTab:AddSection({
+    Name = "Scripts Favoritos"
+})
+
+----------------------------------------------------
+-- 2) CONFIGURAÇÃO DOS JOGOS
+----------------------------------------------------
+local JogosDisponiveis = {
+    {
+        Name = "Break a Lucky Block",
+        PlaceId = 124311897657957,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "TORA ISME",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/BreakaLuckyBlock"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script TORA ISME foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "SPEED HUB X",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua", true))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script SPEED HUB X foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "LUMIN HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("http://luminon.top/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script LUMIN HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "MAX37",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet(
+                        "https://gist.githubusercontent.com/ichtretekinder122/df01c6cbf8f79daf87a7416a91d1ea52/raw/lucky%20block"
+                        .. "?t=" .. tostring(math.random(1, 100000))
+                    ))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script MAX37 foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "ZONHUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://hub.zon.su/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ZONHUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Escape Tsunami for Brainrots",
+        PlaceId = 131623223084840,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "KLS HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/okhalexis/script-escape-tsunami/refs/heads/main/khalexishub"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script KLS HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "LUCKY HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/1heo2fine/idk/main/script.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "LUCKY HUB executado. Key para usar o lucky hub: luckyhub727",
+                        Image = IconeDigital,
+                        Time = 7
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "RIFT",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://rifton.top/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script RIFT foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "CYRUS HUB X",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/CyrusOffc/scriptcyrus/refs/heads/main/roblox/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script CYRUS HUB X foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "LDTDZ HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/07d0449041b37fef50aa2eaadd849c6d.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script LDTDZ HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "ARCADE AUTOMATION",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/840ee45f9c675db266286c744aaf61b180dc027589cd445a629801e4e2a92a03/download"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ARCADE AUTOMATION foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            -- Novos Scripts do Escape Tsunami
+            Tab:AddButton({
+                Name = "JN HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/JNHHGaming/Tsunami/4dc0882e51b4068b4bdd8d9c97e0aed7c2d61c80/Brainrots",true))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script JN HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "FARES",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://pastefy.app/Js0QLlE5/raw"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script FARES foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Murder Mystery 2",
+        PlaceId = 142823291, 
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "ANBU",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://e-vil.com/anbu/mm2main.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ANBU foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "OP SCRIPT",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/j8nzi/project/refs/heads/main/main.lua", true))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script OP SCRIPT foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "SPACE SCRIPTS",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://globalexp.xyz/"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script SPACE SCRIPTS foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "FOURHUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/jokerbiel13/FourHub/refs/heads/main/MM2.lua", true))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script FOURHUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Abyss",
+        PlaceId = 127794225497302,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "ABYSS BY RETROCEDED",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://rawscripts.net/raw/Abyss-BETA-OP-keyless-109988"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ABYSS BY RETROCEDED foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "ASTRA",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://getastra.lol/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ASTRA foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "EXECO HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/3678bf74476a3ec0cc1471cbab867839.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script EXECO HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "NOFEAR",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/nofearscripts/aby/refs/heads/main/loader.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script NOFEAR foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "BITE HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/3cac6a10d05af21657808546d0933bae.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script BITE HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "ABYSS HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/7980fbdf25c18c0b6c30fd17cc6b3b4d.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script ABYSS HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Brookhaven RP",
+        PlaceId = 4924922222,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "SANDER XY",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/kigredns/testUIDK/refs/heads/main/panel.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script SANDER XY foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+
+            Tab:AddButton({
+                Name = "Z4TROX HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet('https://raw.githubusercontent.com/Jfdedit3/z4trox-hub-v1/main/z4trox%20hub'))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script Z4TROX HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Flick",
+        PlaceId = 0,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "DARK HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://pastefy.app/i8613E31/raw"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script DARK HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    },
+    {
+        Name = "Solo Hunters",
+        PlaceId = 0,
+        Icon = IconePadrao,
+        ScriptFunc = function(Tab)
+            Tab:AddButton({
+                Name = "AEONIC HUB",
+                Icon = IconeDigital,
+                Callback = function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/mazino45/main/refs/heads/main/MainScript.lua"))()
+                    
+                    OrionLib:MakeNotification({
+                        Name = "Notificação Khalexis Hub",
+                        Content = "O script AEONIC HUB foi executado.",
+                        Image = IconeDigital,
+                        Time = 5
+                    })
+                end
+            })
+        end
+    }
+}
+
+----------------------------------------------------
+-- 3) DETECÇÃO DO JOGO ATUAL
+----------------------------------------------------
+local CurrentPlaceId = game.PlaceId
+local CurrentGameData = nil
+
+for i, jogo in pairs(JogosDisponiveis) do
+    if jogo.PlaceId == CurrentPlaceId then
+        CurrentGameData = jogo
+        table.remove(JogosDisponiveis, i)
+        break
+    end
+end
+
+----------------------------------------------------
+-- 4) FUNÇÃO PRA CRIAR TABS DE JOGOS
+----------------------------------------------------
+local function CriarTabJogo(jogo, estrela)
+    local Tab = Window:MakeTab({
+        Name = (estrela and "⭐ " or "") .. jogo.Name,
+        Icon = jogo.Icon,
+        PremiumOnly = false
+    })
+
+    jogo.ScriptFunc(Tab)
+end
+
+-- Lógica para detecção de Jogo
+if CurrentGameData then
+    CriarTabJogo(CurrentGameData, true)
+
+    OrionLib:MakeNotification({
+        Name = "Jogo Detectado!",
+        Content = "Scripts para " .. CurrentGameData.Name .. " carregados.",
+        Image = IconePadrao,
+        Time = 5
+    })
+else
+    OrionLib:MakeNotification({
+        Name = "Khalexis Hub",
+        Content = "Infelizmente não temos scripts para esse jogo.",
+        Image = IconePadrao,
+        Time = 5
+    })
+end
+
+-- Carrega o resto das abas dos outros jogos
+for _, jogo in pairs(JogosDisponiveis) do
+    CriarTabJogo(jogo, false)
+end
+
+----------------------------------------------------
+-- 5) INICIALIZA A UI
+----------------------------------------------------
+OrionLib:Init()
